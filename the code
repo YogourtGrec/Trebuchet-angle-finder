@@ -1,0 +1,207 @@
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.style.use('seaborn-poster')
+
+g = 9.80665
+#Constantes du trébuchet
+m1 = 2000.0 #masse du contrepoids [kg]
+mb = 100.0  #masse du balancier [kg]
+l1 = 1.2 #longueur du bras court [m]
+l2 = 5.7 #longueur du bras long [m]
+l3 = 4  #hauteur du pivot [m]
+l4 = 1.4  #longueur du contrepoids [m]
+l5 = 5.0 #longueur de la fronde [m]
+lb = (l1 + l2)/2 #longueur du centre de masse du balancier au point de pivot [m]
+#Constantes de la portion balistique du mouvement
+angleR = math.pi/4 #angle de libération [rad]
+# angle maximal que alpha peut prendre (la plus grande énergie)
+maxAlpha = 0.9 * math.pi
+
+
+def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéleration à un moment précis
+    c11 = m1 * (l1**2 + l4**2) + mb * lb ** 2 - 2 * m1 * l1 * l4 * math.cos(ga) + m2 * (l2 ** 2 + l5 ** 2) - 2 * m2 * l2 * l5 * math.cos(be)
+    c12 = m2*(-l5**2 + l2 * l5 * math.cos(be))
+    c13 = m1*(l4 ** 2 - l1 * l4 * math.cos(ga))
+    c22 = m2*l5**2
+    c33 = m1*l4**2
+    C = np.array([[c11, c12, c13],
+                          [c12, c22, 0],
+                          [c13, 0, c33]], dtype='float64')
+    return np.linalg.inv(C)
+
+def makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des vitesses pour trouver l'accéleration à un moment précis
+    w1 = (-m1*l1 + m2*l2 + mb*lb) * g * math.sin(alph) + m2 * l5 * g * math.sin(be - alph) + m1 * l4 * g * math.sin(ga + alph) - 2 * (m1 * l1 * l4 * math.sin(ga) * ga_vi + m2 * l2 * l5 * math.sin(be) * be_vi) * alph_vi - m1 * l1 * l4 * math.sin(ga) * ga_vi ** 2 + m2 * l2 * l5 * math.sin(be) * be_vi ** 2
+    w2 = m2 * l2 * l5 * math.sin(be) * alph_vi ** 2 - m2 * l5 * g * math.sin(be - alph)
+    w3 = m1 * l1 * l4 * math.sin(ga) * alph_vi ** 2 + m1 * l4 * g * math.sin(ga + alph)
+    return np.array([[w1],
+                             [w2],
+                             [w3]], dtype='float64')
+
+def findAccelerations(alph, ga, be, alph_vi, ga_vi, be_vi): # multiplie la matrice C avec la matrice des vitesses pour trouver l'accéleration à un moment précis
+    inv = makeInverseC(ga, be)
+    v = makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi)
+    A = np.array([[0.0], [0.0], [0.0]], dtype='float64')
+    A[0] = inv[0, 0] * v[0] + inv[0, 1] * v[1] + inv[0, 2] * v[2]
+    A[1] = inv[1, 0] * v[0] + inv[1, 1] * v[1] + inv[1, 2] * v[2]
+    A[2] = inv[2, 0] * v[0] + inv[2, 1] * v[1] + inv[2, 2] * v[2]
+    return A
+
+def solutionArrayDefinition(lenght, initialValue): # fait des arrays float avec 64 bit pour eviter un overflow
+    solution = np.zeros(lenght)
+    solution = np.float64(solution)
+    solution[0] = initialValue
+    return solution
+
+def verifyEnergy(alph, ga, be, alph_vi, ga_vi, be_vi): # retourne l'énergie dans le système à un moment précis
+    energyTreb = 0.5*(m1*(l1**2+l4**2)+mb*lb**2-2*m1*l1*l4*math.cos(ga)+m2*(l2**2+l5**2)-2*m2*l2*l5*math.cos(be)) * alph_vi ** 2
+    energyTreb = energyTreb + 0.5 * m1 * l4 ** 2 * ga_vi ** 2 + 0.5 * m2 * l5 ** 2 * be_vi ** 2 + m1 * (l4**2-l1*l4*math.cos(ga)) * alph_vi * ga_vi + m2 * (-l5 ** 2 + l2 * l5 * math.cos(be)) * alph_vi * be_vi
+    energyTreb = energyTreb+g*(-m1*l1+m2*l2+mb*lb)*math.cos(alph)-g*m2*l5*math.cos(be-alph)+g*m1*l4*math.cos(ga + alph)
+    return energyTreb
+
+# La méthode d'euler n'est plus utilisé, mais nous la laissons dans le code en tant que référence
+# def eulerMethod():
+#     h = 0.001 #quand je n'ai pas de valeur le rendre plus petit
+#     t = np.arange(0, 1 + h, h)  # 2 premiere values c le range et la troisieme c le step
+#     s_alpha = solutionArrayDefinition(len(t), alpha_init)  # creates an array of the same lenght of t to store all vallues of solution for each call
+#     s_gamma = solutionArrayDefinition(len(t), gamma_init)
+#     s_beta = solutionArrayDefinition(len(t), beta_init)
+#     s_alpha_vit = solutionArrayDefinition(len(t), vitesse_alpha_init)
+#     s_gamma_vit = solutionArrayDefinition(len(t), vitesse_gamma_init)
+#     s_beta_vit = solutionArrayDefinition(len(t), vitesse_beta_init)
+#     s_L = np.zeros(len(t))
+#     rangeValid = []
+#     for i in range(0, len(t) - 1):
+#         acc = findAccelerations(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i])
+#         s_alpha[i + 1] = s_alpha[i] + h * (s_alpha_vit[i] + (0.5 * acc[0] * h))
+#         s_gamma[i + 1] = s_gamma[i] + h * (s_gamma_vit[i] + (0.5 * acc[1] * h))
+#         s_beta[i + 1] = s_beta[i] + h * (s_beta_vit[i] + (0.5 * acc[2] * h))
+#         s_alpha_vit[i + 1] = s_alpha_vit[i] + acc[0] * h
+#         s_gamma_vit[i + 1] = s_gamma_vit[i] + acc[1] * h
+#         s_beta_vit[i + 1] = s_beta_vit[i] + acc[2] * h
+#         s_L[i] = verifyEnergie(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i])
+#         if findIfRelease(s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]):
+#             rangeValid.append(calculTrajectoire(t[i], s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]))
+
+# Integration numérique de Heun, la moyenne entre la dérivée du point et celle du point suivant est utilisé.
+def heunMethod(alpha_init):
+    vitesse_alpha_init = 0
+    gamma_init = math.pi - alpha_init
+    vitesse_gamma_init = 0
+    beta_init = 0
+    vitesse_beta_init = 0
+    h = 0.001 #quand aucune valeur de portée est trouvé, rendre le pas h peut aider
+    t = np.arange(0, 1.5 + h, h)  # 2 premiere values c'est le range et la troisième c'est le step
+    s_alpha = solutionArrayDefinition(len(t), alpha_init)  # crée un array de la même taille que t
+    s_gamma = solutionArrayDefinition(len(t), gamma_init)
+    s_beta = solutionArrayDefinition(len(t), beta_init)
+    s_alpha_vit = solutionArrayDefinition(len(t), vitesse_alpha_init)
+    s_gamma_vit = solutionArrayDefinition(len(t), vitesse_gamma_init)
+    s_beta_vit = solutionArrayDefinition(len(t), vitesse_beta_init)
+    # s_L = np.zeros(len(t)) # array pour vérifier l'énergie, mais pas utile autrement
+    rangeValid = []
+    for i in range(0, len(t) - 1):
+        acc1 = findAccelerations(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i]) # la moyenne de ces deux accélerations est utilisé pour trouver
+        acc2 = findAccelerations(s_alpha[i] + h * (s_alpha_vit[i] + (0.5 * acc1[0] * h)),                          # les angles et les vitesses à la prochaine itérations
+                                 s_gamma[i] + h * (s_gamma_vit[i] + (0.5 * acc1[2] * h)),
+                                 s_beta[i] + h * (s_beta_vit[i] + (0.5 * acc1[1] * h)), s_alpha_vit[i] + acc1[0] * h,
+                                 s_gamma_vit[i] + acc1[2] * h, s_beta_vit[i] + acc1[1] * h)
+        s_alpha[i + 1] = s_alpha[i] + h * (s_alpha_vit[i] + (0.5 * (acc1[0]+acc2[0])/2 * h))
+        s_gamma[i + 1] = s_gamma[i] + h * (s_gamma_vit[i] + (0.5 * (acc1[2]+acc2[2])/2 * h))
+        s_beta[i + 1] = s_beta[i] + h * (s_beta_vit[i] + (0.5 * (acc1[1]+acc2[1])/2 * h))
+        s_alpha_vit[i + 1] = s_alpha_vit[i] + (acc1[0]+acc2[0])/2 * h
+        s_gamma_vit[i + 1] = s_gamma_vit[i] + (acc1[2]+acc2[2])/2 * h
+        s_beta_vit[i + 1] = s_beta_vit[i] + (acc1[1]+acc2[1])/2 * h
+        # s_L[i] = verifyEnergy(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i])
+        if findIfRelease(s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]): # trouve si le projectile se déplace à 45 degrees
+            rangeValid.append(calculTrajectoire(t[i], s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]))
+        if s_gamma[i + 1] <= 0 or s_gamma[i + 1] >= 2 * math.pi or s_beta[i + 1] <= 0 or s_beta[i + 1] >= 2*math.pi: # quitte le loop quand la fronde ou le contrepoids frappent la bras principal
+            print("Une collision de la fronde ou du contrepoids est arrive a", t[i+1], "s")
+            # s_alpha = s_alpha[i:]
+            # s_gamma = s_gamma[i:]
+            # s_beta = s_beta[i:]
+            break
+    sommR = 0
+    if len(rangeValid)==0: # si la fonction retourne 0, c'est que les conditions de relachement n'ont jamais été atteinte
+        return 0
+    for i in range(len(rangeValid)): # trouve la moyenne de tout les portée trouver lors de la méthode d'euler
+        sommR += rangeValid[i]
+    # plt.plot(t, s_alpha, color='tab:red') #sert à fair des graphiques, utiliser au besoin
+    # plt.plot(t, s_gamma, color='tab:blue')
+    # plt.plot(t, s_beta, color='tab:green')
+    # plt.plot(t, s_alpha_vit, color='tab:red')
+    # plt.plot(t, s_gamma_vit, color='tab:blue')
+    # plt.plot(t, s_beta_vit, color='tab:green')
+    # plt.plot(t, s_L, color='tab:green')
+    # plt.show()
+    return sommR/len(rangeValid) # retourne la moyenne de tout les portée detectées (il y en a plusieurs à cause de l'imprécision lors de la comparaison avec des floats)
+
+def findIfRelease(the, psi, the_vi, psi_vi):
+    xPosition = -l2*math.sin(the)-l5*math.sin(psi-the)
+    yPosition = l2*math.cos(psi)+l3-l5*math.cos(psi-psi)
+    position = np.array([[xPosition], [yPosition]])
+    xSpeed = -l2*math.cos(the)*the_vi-l5*math.cos(psi-the)*(psi_vi-the_vi)
+    ySpeed = -l2*math.sin(the)*the_vi+l5*math.sin(psi-the)*(psi_vi-the_vi)
+    speed = np.array([[xSpeed], [ySpeed]])
+    if speed[0] > 0 and speed[1] > 0 and findIfFloatEqual(math.atan(speed[1]/speed[0]), angleR): #verifie si l'angle du vecteur vitesse est le mm que l'angle au relanchement
+        return True
+    else:
+        return False
+
+def findIfFloatEqual(float1, float2): # sert à comparé l'angle de la vitesse avec l'angle de relachement voulu
+    # tolerance ou les deux nombres sont quand même égaux
+    tolerance = 1e-2
+    # Compare les deux float avec la tolerance
+    if abs(float1 - float2) < tolerance:
+        return True #les nombres sont considere égaux
+    else:
+        return False #les nombres ne pas sont considere égaux
+
+def calculTrajectoire(tempsR, the, psi, the_vi, psi_vi):       # je dois changer le noms des variables, car c'est melangeant
+    be = -l2*math.cos(the)*the_vi-l5*math.cos(psi-the)*(psi_vi-the_vi)
+    ga = -l2*math.sin(the)*the_vi+l5*math.sin(psi-the)*(psi_vi-the_vi)
+    #de = -l2*math.sin(the) - l5*math.sin(psi-the)
+    e = l2*math.cos(the)+l3-l5*math.cos(psi-the)
+    tI = ((ga + (ga**2+2*g*e)**0.5)/g) + tempsR
+    range = be*(tI-tempsR)
+    print(tempsR)
+    print(range)
+    return range
+
+def findStartingAngles(maxAngle, minAngle, cont): #cont n'est pas encore utiliser
+    nbrLoops = 5
+    #angleStep = (maxAngle-minAngle)/nbrLoops # le nombre d'elements dans init_aplha va etre de nbrLoops
+    init_alpha = np.linspace(maxAngle, minAngle, nbrLoops)  # 2 premiere values c le range et la troisieme c le nombre de valeur
+    print("la la list qui contient les angles iniaux", init_alpha)
+    s_porteeAppr = solutionArrayDefinition(len(init_alpha), heunMethod(init_alpha[0]))
+    if s_porteeAppr[0] < porteeVoulue: # à l'angle maximal, si la portée est inferieure que celle voulue, la portée ne sera jamais atteinte pour aucun des angles
+        print("Ça ne va pas être possible d'atteindre cette portée, la portee maximal est de ", s_porteeAppr[0], "m")
+        quit()
+    for i in range(1, len(init_alpha)):
+        s_porteeAppr[i] = heunMethod(init_alpha[i])
+        if s_porteeAppr[i] == 0:
+            print("error")
+            return 0
+        if s_porteeAppr[i] < porteeVoulue:
+            print("calculs de portee milieux")
+            porteeMilieux = heunMethod((init_alpha[i-1]+init_alpha[i])/2)
+            deviationPercent = (abs(porteeMilieux - porteeVoulue)/porteeVoulue) * 100
+            if deviationPercent <= 0.1: # verfie si la portée avec un angle entre les deux dernier angles est à 1% de la portée voulue
+                print(porteeMilieux, "m, c la bonne portee, avec un pourcentage d'écart de ", deviationPercent, "%")
+                print("Il faut que l'angle initial de alpha soit de", (init_alpha[i-1]+init_alpha[i])/2, "rad")
+                quit()
+            else:
+                findStartingAngles(init_alpha[i-1], init_alpha[i], cont)
+    return 0
+
+
+continFonct = 0
+porteeVoulue = input("qu'elle est la portée voulue en mètres: ")   #distance qu'on veut que le projectile atteint [m]
+porteeVoulue = int(porteeVoulue)
+m2 = input("qu'elle est la masse du projectile en kg: ")  #masse du projectile [kg]
+m2 = int(m2)
+max_alpha_init = 0.9*math.pi
+porteereel = findStartingAngles(max_alpha_init, 0.1, continFonct)
+
+
