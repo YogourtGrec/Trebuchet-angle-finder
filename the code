@@ -158,21 +158,20 @@ def findIfFloatEqual(float1, float2): # sert à comparé l'angle de la vitesse a
     else:
         return False #les nombres ne pas sont considere égaux
 
-def calculTrajectoire(tempsR, the, psi, the_vi, psi_vi):       # je dois changer le noms des variables, car c'est melangeant
-    be = -l2*math.cos(the)*the_vi-l5*math.cos(psi-the)*(psi_vi-the_vi)
-    ga = -l2*math.sin(the)*the_vi+l5*math.sin(psi-the)*(psi_vi-the_vi)
+def calculTrajectoire(tempsR, alph, be, alph_vi, be_vi):       # calculs de la trajectoir ballistique du projectile et imprime le temps de relachement et la portée
+    x = -l2 * math.cos(alph) * alph_vi - l5 * math.cos(be - alph) * (be_vi - alph_vi)
+    y = -l2 * math.sin(alph) * alph_vi + l5 * math.sin(be - alph) * (be_vi - alph_vi)
     #de = -l2*math.sin(the) - l5*math.sin(psi-the)
-    e = l2*math.cos(the)+l3-l5*math.cos(psi-the)
-    tI = ((ga + (ga**2+2*g*e)**0.5)/g) + tempsR
-    range = be*(tI-tempsR)
+    e = l2 * math.cos(alph) + l3 - l5 * math.cos(be - alph)
+    tI = ((y + (y**2+2*g*e)**0.5)/g) + tempsR
+    range = x*(tI-tempsR)
     print(tempsR)
     print(range)
     return range
 
-def findStartingAngles(maxAngle, minAngle, cont): #cont n'est pas encore utiliser
+def findStartingAngles(maxAngle, minAngle): #fait un loop qui trouve en essai erreures les bons angles de départ pour que la portée soit atteinte
     nbrLoops = 5
-    #angleStep = (maxAngle-minAngle)/nbrLoops # le nombre d'elements dans init_aplha va etre de nbrLoops
-    init_alpha = np.linspace(maxAngle, minAngle, nbrLoops)  # 2 premiere values c le range et la troisieme c le nombre de valeur
+    init_alpha = np.linspace(maxAngle, minAngle, nbrLoops)  # 2 premiere values c le range et la troisieme c le nombre de valeur, fait un array de valeur entre les deux angles
     print("la la list qui contient les angles iniaux", init_alpha)
     s_porteeAppr = solutionArrayDefinition(len(init_alpha), heunMethod(init_alpha[0]))
     if s_porteeAppr[0] < porteeVoulue: # à l'angle maximal, si la portée est inferieure que celle voulue, la portée ne sera jamais atteinte pour aucun des angles
@@ -192,16 +191,14 @@ def findStartingAngles(maxAngle, minAngle, cont): #cont n'est pas encore utilise
                 print("Il faut que l'angle initial de alpha soit de", (init_alpha[i-1]+init_alpha[i])/2, "rad")
                 quit()
             else:
-                findStartingAngles(init_alpha[i-1], init_alpha[i], cont)
+                findStartingAngles(init_alpha[i-1], init_alpha[i])
     return 0
 
 
-continFonct = 0
 porteeVoulue = input("qu'elle est la portée voulue en mètres: ")   #distance qu'on veut que le projectile atteint [m]
 porteeVoulue = int(porteeVoulue)
 m2 = input("qu'elle est la masse du projectile en kg: ")  #masse du projectile [kg]
 m2 = int(m2)
-max_alpha_init = 0.9*math.pi
-porteereel = findStartingAngles(max_alpha_init, 0.1, continFonct)
-
+max_alpha_init = 0.9*math.pi # angle maximal que peut être alpha pour notre trébuchet
+porteereel = findStartingAngles(max_alpha_init, 0.1)
 
