@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 plt.style.use('seaborn-poster')
 
 g = 9.80665
-#Constantes du trébuchet
+#Constantes du trébuchet (pas les notres)
 m1 = 2000.0 #masse du contrepoids [kg]
 mb = 100.0  #masse du balancier [kg]
 l1 = 1.2 #longueur du bras court [m]
@@ -19,9 +19,26 @@ angleR = math.pi/4 #angle de libération [rad]
 # angle maximal que alpha peut prendre (la plus grande énergie)
 maxAlpha = 0.9 * math.pi
 
+# voici les parametres de notre Trebuchet:
+# g = 9.80665
+# m1 = 2 #masse du contrepoids [kg]
+# m2 = 0.03  #masse du projectile [kg]
+# mb = 0.1  #masse du balancier [kg]
+# l1 = 0.06 #longueur du bras court [m]
+# l2 = 0.24 #longueur du bras long [m]
+# l3 = 0.3  #hauteur du pivot [m]
+# l4 = 0.06  #longueur du contrepoids [m]
+# l5 = 0.24 #longueur de la fronde [m]
+# lb = (l1 + l2)/2 #longueur du centre de masse du balancier au point de pivot [m]
+# #Constantes de la portion balistique du mouvement
+# angleR = math.pi/4 #angle de libération [rad]
+# angle maximal que alpha peut prendre (la plus grande énergie)
+# maxAlpha = 0.9 * math.pi
+
 
 def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéleration à un moment précis
-    c11 = m1 * (l1**2 + l4**2) + mb * lb ** 2 - 2 * m1 * l1 * l4 * math.cos(ga) + m2 * (l2 ** 2 + l5 ** 2) - 2 * m2 * l2 * l5 * math.cos(be)
+    c11 = (m1 * (l1**2 + l4**2) + mb * lb ** 2 - 2 * m1 * l1 * l4 * math.cos(ga)
+           + m2 * (l2 ** 2 + l5 ** 2) - 2 * m2 * l2 * l5 * math.cos(be))
     c12 = m2*(-l5**2 + l2 * l5 * math.cos(be))
     c13 = m1*(l4 ** 2 - l1 * l4 * math.cos(ga))
     c22 = m2*l5**2
@@ -31,8 +48,11 @@ def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéler
                           [c13, 0, c33]], dtype='float64')
     return np.linalg.inv(C)
 
-def makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des vitesses pour trouver l'accéleration à un moment précis
-    w1 = (-m1*l1 + m2*l2 + mb*lb) * g * math.sin(alph) + m2 * l5 * g * math.sin(be - alph) + m1 * l4 * g * math.sin(ga + alph) - 2 * (m1 * l1 * l4 * math.sin(ga) * ga_vi + m2 * l2 * l5 * math.sin(be) * be_vi) * alph_vi - m1 * l1 * l4 * math.sin(ga) * ga_vi ** 2 + m2 * l2 * l5 * math.sin(be) * be_vi ** 2
+def makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des vitesses pour trouver #l'accéleration à un moment précis
+    w1 = ((-m1*l1 + m2*l2 + mb*lb) * g * math.sin(alph) + m2 * l5 * g * math.sin(be - alph)
+        + m1 * l4 * g * math.sin(ga + alph) - 2 * (m1 * l1 * l4 * math.sin(ga) * ga_vi +
+        m2 * l2 * l5 * math.sin(be) * be_vi) * alph_vi - m1 * l1 * l4 * math.sin(ga) * ga_vi ** 2 +
+        m2 * l2 * l5 * math.sin(be) * be_vi ** 2)
     w2 = m2 * l2 * l5 * math.sin(be) * alph_vi ** 2 - m2 * l5 * g * math.sin(be - alph)
     w3 = m1 * l1 * l4 * math.sin(ga) * alph_vi ** 2 + m1 * l4 * g * math.sin(ga + alph)
     return np.array([[w1],
@@ -54,17 +74,23 @@ def solutionArrayDefinition(lenght, initialValue): # fait des arrays float avec 
     solution[0] = initialValue
     return solution
 
-def verifyEnergy(alph, ga, be, alph_vi, ga_vi, be_vi): # retourne l'énergie dans le système à un moment précis
-    energyTreb = 0.5*(m1*(l1**2+l4**2)+mb*lb**2-2*m1*l1*l4*math.cos(ga)+m2*(l2**2+l5**2)-2*m2*l2*l5*math.cos(be)) * alph_vi ** 2
-    energyTreb = energyTreb + 0.5 * m1 * l4 ** 2 * ga_vi ** 2 + 0.5 * m2 * l5 ** 2 * be_vi ** 2 + m1 * (l4**2-l1*l4*math.cos(ga)) * alph_vi * ga_vi + m2 * (-l5 ** 2 + l2 * l5 * math.cos(be)) * alph_vi * be_vi
-    energyTreb = energyTreb+g*(-m1*l1+m2*l2+mb*lb)*math.cos(alph)-g*m2*l5*math.cos(be-alph)+g*m1*l4*math.cos(ga + alph)
+
+def verifyEnergy(alph, ga, be, alph_vi, ga_vi, be_vi):# retourne l'énergie dans le système à un moment précis, est seulement utilisé pour faire des graphiques d'énergie dans le temps
+    energyTreb = (1 / 2) * (m1 * (l1 ** 2 + l4 ** 2) + mb * lb ** 2 - 2 * m1 * l1 * l4 * math.cos(ga) + m2 * (
+                 l2 ** 2 + l5 ** 2) - 2 * m2 * l2 * l5 * math.cos(be)) * alph_vi ** 2 + \
+                 (1 / 2) * m1 * l4 ** 2 * ga_vi ** 2 + (1 / 2) * m2 * l5 ** 2 * be_vi ** 2 + m1 * (
+                 l4 ** 2 - l1 * l4 * math.cos(ga)) * alph_vi * ga_vi + \
+                 m2 * (-(l5 ** 2) + l2 * l5 * math.cos(be)) * alph_vi * be_vi + g * (
+                 -m1 * l1 + m2 * l2 + mb * lb) * math.cos(alph) - g * m2 * l5 * math.cos(be - alph) + \
+                 g * m1 * l4 * math.cos(ga + alph) + g * (m1 + m2 + mb) * l3
     return energyTreb
+
 
 # La méthode d'euler n'est plus utilisé, mais nous la laissons dans le code en tant que référence
 # def eulerMethod():
 #     h = 0.001 #quand je n'ai pas de valeur le rendre plus petit
 #     t = np.arange(0, 1 + h, h)  # 2 premiere values c le range et la troisieme c le step
-#     s_alpha = solutionArrayDefinition(len(t), alpha_init)  # creates an array of the same lenght of t to store all vallues of solution for each call
+#     s_alpha = solutionArrayDefinition(len(t), alpha_init)  # crée un array de la même taille que t pour emmagasiné tout les valeurs dans le laps de temps voulu
 #     s_gamma = solutionArrayDefinition(len(t), gamma_init)
 #     s_beta = solutionArrayDefinition(len(t), beta_init)
 #     s_alpha_vit = solutionArrayDefinition(len(t), vitesse_alpha_init)
@@ -93,7 +119,7 @@ def heunMethod(alpha_init):
     vitesse_beta_init = 0
     h = 0.001 #quand aucune valeur de portée est trouvé, rendre le pas h peut aider
     t = np.arange(0, 1.5 + h, h)  # 2 premiere values c'est le range et la troisième c'est le step
-    s_alpha = solutionArrayDefinition(len(t), alpha_init)  # crée un array de la même taille que t
+    s_alpha = solutionArrayDefinition(len(t), alpha_init)  # crée un array de la même taille que t pour emmagasiné tout les valeurs dans le laps de temps voulu
     s_gamma = solutionArrayDefinition(len(t), gamma_init)
     s_beta = solutionArrayDefinition(len(t), beta_init)
     s_alpha_vit = solutionArrayDefinition(len(t), vitesse_alpha_init)
@@ -116,6 +142,7 @@ def heunMethod(alpha_init):
         # s_L[i] = verifyEnergy(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i])
         if findIfRelease(s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]): # trouve si le projectile se déplace à 45 degrees
             rangeValid.append(calculTrajectoire(t[i], s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]))
+            break #ce break fait que seul la première détéction d'un relachement soit utilisé et quitte le loop immédiatement après
         if s_gamma[i + 1] <= 0 or s_gamma[i + 1] >= 2 * math.pi or s_beta[i + 1] <= 0 or s_beta[i + 1] >= 2*math.pi: # quitte le loop quand la fronde ou le contrepoids frappent la bras principal
             print("Une collision de la fronde ou du contrepoids est arrive a", t[i+1], "s")
             # s_alpha = s_alpha[i:]
@@ -130,11 +157,18 @@ def heunMethod(alpha_init):
     # plt.plot(t, s_alpha, color='tab:red') #sert à fair des graphiques, utiliser au besoin
     # plt.plot(t, s_gamma, color='tab:blue')
     # plt.plot(t, s_beta, color='tab:green')
+    # plt.legend(["alpha", "gamma", "beta"])
+    # plt.xlabel("temps (s)")
+    # plt.ylabel("angle (rad)")
     # plt.plot(t, s_alpha_vit, color='tab:red')
     # plt.plot(t, s_gamma_vit, color='tab:blue')
     # plt.plot(t, s_beta_vit, color='tab:green')
+    # plt.legend(["vitesse alpha", "vitesse gamma", "vitesse beta"])
+    # plt.xlabel("temps (s)")
+    # plt.ylabel("vitesse angulaire (rad/s)")
     # plt.plot(t, s_L, color='tab:green')
-    # plt.show()
+    # plt.xlabel("temps (s)")
+    # plt.ylabel("énergie (J)")
     return sommR/len(rangeValid) # retourne la moyenne de tout les portée detectées (il y en a plusieurs à cause de l'imprécision lors de la comparaison avec des floats)
 
 def findIfRelease(the, psi, the_vi, psi_vi):
@@ -201,4 +235,3 @@ m2 = input("qu'elle est la masse du projectile en kg: ")  #masse du projectile [
 m2 = int(m2)
 max_alpha_init = 0.9*math.pi # angle maximal que peut être alpha pour notre trébuchet
 porteereel = findStartingAngles(max_alpha_init, 0.1)
-
