@@ -125,7 +125,7 @@ def heunMethod(alpha_init):
     s_alpha_vit = solutionArrayDefinition(len(t), vitesse_alpha_init)
     s_gamma_vit = solutionArrayDefinition(len(t), vitesse_gamma_init)
     s_beta_vit = solutionArrayDefinition(len(t), vitesse_beta_init)
-    # s_L = np.zeros(len(t)) # array pour vérifier l'énergie, mais pas utile autrement
+    # s_L = solutionArrayDefinition(len(t), verifyEnergy(s_alpha[0], s_gamma[0], s_beta[0], s_alpha_vit[0], s_gamma_vit[0], s_beta_vit[0]))
     rangeValid = []
     for i in range(0, len(t) - 1):
         acc1 = findAccelerations(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i]) # la moyenne de ces deux accélerations est utilisé pour trouver
@@ -139,7 +139,7 @@ def heunMethod(alpha_init):
         s_alpha_vit[i + 1] = s_alpha_vit[i] + (acc1[0]+acc2[0])/2 * h
         s_gamma_vit[i + 1] = s_gamma_vit[i] + (acc1[2]+acc2[2])/2 * h
         s_beta_vit[i + 1] = s_beta_vit[i] + (acc1[1]+acc2[1])/2 * h
-        # s_L[i] = verifyEnergy(s_alpha[i], s_gamma[i], s_beta[i], s_alpha_vit[i], s_gamma_vit[i], s_beta_vit[i])
+        # s_L[i+1] = verifyEnergy(s_alpha[i+1], s_gamma[i+1], s_beta[i+1], s_alpha_vit[i+1], s_gamma_vit[i+1], s_beta_vit[i+1])
         if findIfRelease(s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]): # trouve si le projectile se déplace à 45 degrees
             rangeValid.append(calculTrajectoire(t[i], s_alpha[i], s_beta[i], s_alpha_vit[i], s_beta_vit[i]))
             break #ce break fait que seul la première détéction d'un relachement soit utilisé et quitte le loop immédiatement après
@@ -166,6 +166,8 @@ def heunMethod(alpha_init):
     # plt.legend(["vitesse alpha", "vitesse gamma", "vitesse beta"])
     # plt.xlabel("temps (s)")
     # plt.ylabel("vitesse angulaire (rad/s)")
+    # np.delete(t, -1)
+    # np.delete(s_L, -1)
     # plt.plot(t, s_L, color='tab:green')
     # plt.xlabel("temps (s)")
     # plt.ylabel("énergie (J)")
