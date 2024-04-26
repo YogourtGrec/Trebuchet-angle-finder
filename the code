@@ -19,21 +19,20 @@ angleR = math.pi/4 #angle de libération [rad]
 # angle maximal que alpha peut prendre (la plus grande énergie)
 maxAlpha = 0.9 * math.pi
 
-# voici les parametres de notre Trebuchet:
+# #voici les parametres de notre Trebuchet:
 # g = 9.80665
-# m1 = 2 #masse du contrepoids [kg]
-# m2 = 0.03  #masse du projectile [kg]
+# m1 = 1 #masse du contrepoids [kg]
 # mb = 0.1  #masse du balancier [kg]
 # l1 = 0.06 #longueur du bras court [m]
-# l2 = 0.24 #longueur du bras long [m]
+# l2 = 0.25 #longueur du bras long [m]
 # l3 = 0.3  #hauteur du pivot [m]
-# l4 = 0.06  #longueur du contrepoids [m]
-# l5 = 0.24 #longueur de la fronde [m]
+# l4 = 0.12  #longueur du contrepoids [m]
+# l5 = 0.235 #longueur de la fronde [m]
 # lb = (l1 + l2)/2 #longueur du centre de masse du balancier au point de pivot [m]
 # #Constantes de la portion balistique du mouvement
 # angleR = math.pi/4 #angle de libération [rad]
-# angle maximal que alpha peut prendre (la plus grande énergie)
-# maxAlpha = 0.9 * math.pi
+# # angle maximal que alpha peut prendre (la plus grande énergie)
+# maxAlpha = (128 * 2 * math.pi)/360 # angles alpha maximal que peut prendre notre trébuchet
 
 
 def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéleration à un moment précis
@@ -85,6 +84,17 @@ def verifyEnergy(alph, ga, be, alph_vi, ga_vi, be_vi):# retourne l'énergie dans
                  g * m1 * l4 * math.cos(ga + alph) + g * (m1 + m2 + mb) * l3
     return energyTreb
 
+def findBetaInit(alpha): # trouve l'angle initial beta, la plupart du temps il sera le même que alpha, mais si le plancher interfère, l'angle sera moins grand
+    Height = l3          # seulement valid pour des angles alpha entre 0 et 2pi
+    if alpha > math.pi/2:
+        Height -= l2 * math.sin(alpha - (math.pi/2))
+    elif alpha < math.pi/2:
+        Height -= l2 * math.sin((3*math.pi)/2 + alpha)
+    if Height - l2 >= 0:
+        return alpha
+    elif Height - l2 < 0:
+        return alpha - math.acos(Height/l2)
+
 
 # La méthode d'euler n'est plus utilisé, mais nous la laissons dans le code en tant que référence
 # def eulerMethod():
@@ -115,10 +125,11 @@ def heunMethod(alpha_init):
     vitesse_alpha_init = 0
     gamma_init = math.pi - alpha_init
     vitesse_gamma_init = 0
-    beta_init = 0
+    beta_init = findBetaInit(alpha_init)
     vitesse_beta_init = 0
+    print("Les angles de départ sont ", alpha_init, gamma_init, beta_init, " ou ", beta_init*180/math.pi, "pour l'angle beta")
     h = 0.001 #quand aucune valeur de portée est trouvé, rendre le pas h peut aider
-    t = np.arange(0, 1.5 + h, h)  # 2 premiere values c'est le range et la troisième c'est le step
+    t = np.arange(0, 2 + h, h)  # 2 premiere values c'est le range et la troisième c'est le step
     s_alpha = solutionArrayDefinition(len(t), alpha_init)  # crée un array de la même taille que t pour emmagasiné tout les valeurs dans le laps de temps voulu
     s_gamma = solutionArrayDefinition(len(t), gamma_init)
     s_beta = solutionArrayDefinition(len(t), beta_init)
@@ -201,29 +212,29 @@ def calculTrajectoire(tempsR, alph, be, alph_vi, be_vi):       # calculs de la t
     e = l2 * math.cos(alph) + l3 - l5 * math.cos(be - alph)
     tI = ((y + (y**2+2*g*e)**0.5)/g) + tempsR
     range = x*(tI-tempsR)
-    print(tempsR)
-    print(range)
+    print(tempsR, "s au relachement")
+    print(range, "m de portée")
     return range
 
 def findStartingAngles(maxAngle, minAngle): #fait un loop qui trouve en essai erreures les bons angles de départ pour que la portée soit atteinte
     nbrLoops = 5
     init_alpha = np.linspace(maxAngle, minAngle, nbrLoops)  # 2 premiere values c le range et la troisieme c le nombre de valeur, fait un array de valeur entre les deux angles
-    print("la la list qui contient les angles iniaux", init_alpha)
-    s_porteeAppr = solutionArrayDefinition(len(init_alpha), heunMethod(init_alpha[0]))
-    if s_porteeAppr[0] < porteeVoulue: # à l'angle maximal, si la portée est inferieure que celle voulue, la portée ne sera jamais atteinte pour aucun des angles
-        print("Ça ne va pas être possible d'atteindre cette portée, la portee maximal est de ", s_porteeAppr[0], "m")
+    print("la la list qui contient les angles initiaux :", init_alpha)
+    s_range = solutionArrayDefinition(len(init_alpha), heunMethod(init_alpha[0]))
+    if s_range[0] < rangeWanted: # à l'angle maximal, si la portée est inferieure que celle voulue, la portée ne sera jamais atteinte pour aucun des angles
+        print("Ça ne va pas être possible d'atteindre cette portée, la portée maximal est de ", s_range[0], "m")
         quit()
     for i in range(1, len(init_alpha)):
-        s_porteeAppr[i] = heunMethod(init_alpha[i])
-        if s_porteeAppr[i] == 0:
+        s_range[i] = heunMethod(init_alpha[i])
+        if s_range[i] == 0:
             print("error")
             return 0
-        if s_porteeAppr[i] < porteeVoulue:
-            print("calculs de portee milieux")
-            porteeMilieux = heunMethod((init_alpha[i-1]+init_alpha[i])/2)
-            deviationPercent = (abs(porteeMilieux - porteeVoulue)/porteeVoulue) * 100
+        if s_range[i] < rangeWanted:
+            print("calculs de portée milieux")
+            middleRange = heunMethod((init_alpha[i-1]+init_alpha[i])/2)
+            deviationPercent = (abs(middleRange - rangeWanted) / rangeWanted) * 100
             if deviationPercent <= 0.1: # verfie si la portée avec un angle entre les deux dernier angles est à 1% de la portée voulue
-                print(porteeMilieux, "m, c la bonne portee, avec un pourcentage d'écart de ", deviationPercent, "%")
+                print(middleRange, "m, c la bonne portee, avec un pourcentage d'écart de ", deviationPercent, "%")
                 print("Il faut que l'angle initial de alpha soit de", (init_alpha[i-1]+init_alpha[i])/2, "rad")
                 quit()
             else:
@@ -231,9 +242,9 @@ def findStartingAngles(maxAngle, minAngle): #fait un loop qui trouve en essai er
     return 0
 
 
-porteeVoulue = input("qu'elle est la portée voulue en mètres: ")   #distance qu'on veut que le projectile atteint [m]
-porteeVoulue = int(porteeVoulue)
+rangeWanted = input("qu'elle est la portée voulue en mètres: ")   #distance qu'on veut que le projectile atteint [m]
+rangeWanted = float(rangeWanted)
 m2 = input("qu'elle est la masse du projectile en kg: ")  #masse du projectile [kg]
-m2 = int(m2)
+m2 = float(m2)
 max_alpha_init = 0.9*math.pi # angle maximal que peut être alpha pour notre trébuchet
-porteereel = findStartingAngles(max_alpha_init, 0.1)
+findStartingAngles(max_alpha_init, 0.1)
