@@ -35,7 +35,7 @@ maxAlpha = 0.9 * math.pi
 # maxAlpha = (128 * 2 * math.pi)/360 # angles alpha maximal que peut prendre notre trébuchet
 
 
-def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéleration à un moment précis
+def makeInverseCoefficients(ga, be):  #fait la matrice inverse de C pour trouver l'accéleration à un moment précis
     c11 = (m1 * (l1**2 + l4**2) + mb * lb ** 2 - 2 * m1 * l1 * l4 * math.cos(ga)
            + m2 * (l2 ** 2 + l5 ** 2) - 2 * m2 * l2 * l5 * math.cos(be))
     c12 = m2*(-l5**2 + l2 * l5 * math.cos(be))
@@ -47,7 +47,7 @@ def makeInverseC(ga, be):  #fait la matrice inverse de C pour trouver l'accéler
                           [c13, 0, c33]], dtype='float64')
     return np.linalg.inv(C)
 
-def makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des vitesses pour trouver #l'accéleration à un moment précis
+def makeVectorConstants(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des vitesses pour trouver #l'accéleration à un moment précis
     w1 = ((-m1*l1 + m2*l2 + mb*lb) * g * math.sin(alph) + m2 * l5 * g * math.sin(be - alph)
         + m1 * l4 * g * math.sin(ga + alph) - 2 * (m1 * l1 * l4 * math.sin(ga) * ga_vi +
         m2 * l2 * l5 * math.sin(be) * be_vi) * alph_vi - m1 * l1 * l4 * math.sin(ga) * ga_vi ** 2 +
@@ -59,8 +59,8 @@ def makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi): #fait la matrice des v
                              [w3]], dtype='float64')
 
 def findAccelerations(alph, ga, be, alph_vi, ga_vi, be_vi): # multiplie la matrice C avec la matrice des vitesses pour trouver l'accéleration à un moment précis
-    inv = makeInverseC(ga, be)
-    v = makeVectorSpeed(alph, ga, be, alph_vi, ga_vi, be_vi)
+    inv = makeInverseCoefficients(ga, be)
+    v = makeVectorConstants(alph, ga, be, alph_vi, ga_vi, be_vi)
     A = np.array([[0.0], [0.0], [0.0]], dtype='float64')
     A[0] = inv[0, 0] * v[0] + inv[0, 1] * v[1] + inv[0, 2] * v[2]
     A[1] = inv[1, 0] * v[0] + inv[1, 1] * v[1] + inv[1, 2] * v[2]
